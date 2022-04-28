@@ -1,21 +1,19 @@
+from ast import Constant
 
 
 class Game:
     def __init__(self):
-        self.board = [[{'level': 0, 'occupant': 'O', 'active': False}
-                       for i in range(5)] for j in range(5)]   #5 x 5 board, each space contains level, occupant, and active bool - can be chosen as a space
+        self.board = Board()
         self.row = 0 
         self.col = 0
         self.winner = None
         self.end = False
         self.turn = 0 #Turn number
         self.sub_turn = 'P' # action within a turn: place (P), select (S), move (M), or build (B)
-        self.color = 'W' # player color, B(Blue) or W(hite)
+        self.player_one = Player('white', ['A', 'B'])
+        self.player_two = Player('blue', ['Y', 'Z'])
+        self.current_player = self.player_one
     
-    def __str__(self):
-        """Creating a CLI / ASCII representation of the 5 x 5 board
-        """
-        
     def is_valid_num(num):
         """Checks if x or y exists within the confines of the board
         num: int
@@ -90,12 +88,12 @@ class Game:
         Checks if the user can build on the chosen space, returns True if possible, else Returns False.
         """
         
-    def make_player_color_active(self):
-        """ Mark pieces as active. For a given player color, mark all the spaces with that player color as active
+    def make_player_color_occupied(self):
+        """ Mark pieces as occupied. For a given player color, mark all the spaces with that player color as occupied
         """
         
-    def make_choice_active(self):
-        """Marks the piece a player has chosen as active"""
+    def make_choice_occupied(self):
+        """Marks the piece a player has chosen as occupied"""
         
     def check_move_available(self):
         """Check if there is a move available for the player, if not, End Game
@@ -105,8 +103,88 @@ class Game:
         """Checks if there is a build available for the player, if not, End Game"""
         
     def end_game(self):
-        """Ends game and prevents further moves - Declare the winner and make all spaces inactive and inaccessible"""
-        
+        """Ends game and prevents further moves - Declare the winner and make all spaces inoccupied and inaccessible"""
+    
+    def print_game_state(self):
+        self.board.print_board()
+        print(f"Turn: {self.turn}, {self.current_player.color} {'(A, B)' if self.current_player.color == 'white' else '(Y, Z)'}")
+
+
+class Board:
+
+    initial_occupied_spaces = [
+        {
+            'coordinates': (1, 1),
+            'occupant': 'Y',
+            'level': '0'
+        },
+        {
+            'coordinates': (1, 3),
+            'occupant': 'B',
+            'level': '0'
+        },
+        {
+            'coordinates': (2, 1),
+            'occupant': 'A',
+            'level': '0'
+        },
+        {
+            'coordinates': (3, 1),
+            'occupant': ' ',
+            'level': '1'
+        },
+        {
+            'coordinates': (3, 3),
+            'occupant': 'Z',
+            'level': '0'
+        },
+    ]
+
+
+    def __construct_space_string(self, x, y):
+        """
+            Constructs a string representation of a space on the board
+            Args:
+                x (int): x-coordinate of the space
+                y (int): y-coordinate of the space
+            Returns:
+                string: string representation of the space
+        """
+        return f"|{str(self.state[x][y]['level'])}{str(self.state[x][y]['occupant'])}"
+
+    def __place_initial_pieces(self):
+        """
+            Place initial pieces on the board
+        """
+
+        for space in self.initial_occupied_spaces:
+            self.state[space['coordinates'][0]][space['coordinates'][1]]['occupant'] = space['occupant']
+            self.state[space['coordinates'][0]][space['coordinates'][1]]['occupied'] = True
+            self.state[space['coordinates'][0]][space['coordinates'][1]]['level'] = space['level']
+    
+
+    def __init__(self):
+        self.state = [[{'level': 0, 'occupant': ' ', 'occupied': False}
+                for i in range(5)] for j in range(5)] # Initial setup as empty board   
+        self.__place_initial_pieces()
+
+    def print_board(self):
+        """
+            Prints the board
+        """
+
+        for i in range(5):
+            print("+--+--+--+--+--+")
+            for j in range(5):
+                print(self.__construct_space_string(i, j), end='')
+            print("|")
+        print("+--+--+--+--+--+")
+
+class Player:
+    def __init__(self, color, workers):
+        self.workers = workers
+        self.color = color
+
         
 
     
