@@ -1,4 +1,4 @@
-from ast import Constant
+from ast import Constant, match_case
 
 
 class Game:
@@ -46,15 +46,26 @@ class Game:
             x (int): x-coordinate of spot on board
             y (int): y-coordinate of spot on board
         """
-        
-    def move_worker(self, x, y):
+    
+    def convert_direction_to_coordinates(self, direction, x, y):
+        match direction:
+            case 'n': return x, y - 1
+            case 's': return x, y + 1
+            case 'e': return x + 1, y
+            case 'w': return x - 1, y
+            case 'ne': return x + 1, y - 1
+            case 'nw': return x - 1, y - 1
+            case 'se': return x + 1, y + 1
+            case 'sw': return x - 1, y + 1
+    
+    def move_worker(self, worker, move_direction, build_direction):
         """Moves piece to a new spot on board, checks if the deisred new spot is not the same as current spot
 
         Args:
             x (int): x-coordinate of new spot
             y (int): y-coordinate of new spot
         """
-        
+        self.convert_direction_to_coordinates(move_direction, worker.x, worker.y)
         
     def get_height_score(self, color):
         """Generates a numeric score to the game - used in the building of the AI to find the optimal position
@@ -64,8 +75,14 @@ class Game:
         
     def undo(self):
         """Undo most recent action"""
+
+
+    def space_is_within_bounds(self, x, y):
+        """Checks if the space is within the board's bounds"""
+        return x >= 0 and x <= 4 and y >= 0 and y <= 4
+    
         
-    def move_is_valid_space(self, x, y):
+    def is_move_valid(self, dest_x, dest_y, current_x, current_y):
         """Checks if the move is a valid move
 
         Args:
@@ -75,6 +92,9 @@ class Game:
         Returns: bool
         Checks if the action is valid or not, returns True if it is, else, returns False
         """
+        dest_space = self.board.state[dest_x][dest_y]
+        current_space = self.board.state[current_x][current_y]
+        return (not dest_space['occupied']) and self.space_is_within_bounds(dest_x, dest_y) and dest_space != current_space and dest_space['level'] - current_space['level'] <= 1
         
         
     def build_is_valid_space(self, x, y):
@@ -108,6 +128,39 @@ class Game:
     def print_game_state(self):
         self.board.print_board()
         print(f"Turn: {self.turn}, {self.current_player.color} {'(A, B)' if self.current_player.color == 'white' else '(Y, Z)'}")
+    
+    def check_if_game_over(self):
+        """Checks if the game is over, if so, end the game"""
+        for row in self.board.state:
+            for space in row:
+                if space['level'] == 3 and space['occupied'] == True:
+                    return space['occupant']
+                else: 
+                    return False 
+    
+    def check_adjacent_spaces(self, moves, space):
+        for x in range(-1, 2):
+            for y in range(-1, 2):
+                if x == 0 and y == 0:
+                    continue
+                if self.is_move_valid(space['x'] + x, space['y'] + y, space['x'], space['y']):
+                    moves.append({
+                        'x': space['x'] + x,
+                        'y': space['y'] + y,
+                        'worker': space['occupant']
+                    }) 
+
+    
+    def enumerate_player_moves(self, player):
+        """Enumerates all the possible moves for the player"""
+        moves = []
+        for row in self.board.state:
+            for space in row:
+                if space['occupied'] == True and space['occupant'] in player.workers:
+                    # Check all the spaces around the worker
+                    self.check_adjacent_spaces(moves, space)
+
+
 
 
 class Board:
@@ -116,27 +169,32 @@ class Board:
         {
             'coordinates': (1, 1),
             'occupant': 'Y',
-            'level': '0'
+            'level': '0',
+            'color': 'blue'
         },
         {
             'coordinates': (1, 3),
             'occupant': 'B',
-            'level': '0'
+            'level': '0',
+            'color': 'white'
         },
         {
             'coordinates': (2, 1),
             'occupant': 'A',
-            'level': '0'
+            'level': '0',
+            'color': 'white'
         },
         {
             'coordinates': (3, 1),
             'occupant': ' ',
-            'level': '1'
+            'level': '1',
+            'color': ""
         },
         {
             'coordinates': (3, 3),
             'occupant': 'Z',
-            'level': '0'
+            'level': '0',
+            'color': 'blue'
         },
     ]
 
@@ -150,7 +208,7 @@ class Board:
             Returns:
                 string: string representation of the space
         """
-        return f"|{str(self.state[x][y]['level'])}{str(self.state[x][y]['occupant'])}"
+        return f"|{str(self.state[x][y]['level'])}{repr(self.state[x][y]['occupant']) if self.state[x][y]['occupant'] else ' '}"
 
     def __place_initial_pieces(self):
         """
@@ -158,13 +216,13 @@ class Board:
         """
 
         for space in self.initial_occupied_spaces:
-            self.state[space['coordinates'][0]][space['coordinates'][1]]['occupant'] = space['occupant']
+            self.state[space['coordinates'][0]][space['coordinates'][1]]['occupant'] = Worker(space['color'], space['coordinates'], space['level'], space['occupant'])
             self.state[space['coordinates'][0]][space['coordinates'][1]]['occupied'] = True
             self.state[space['coordinates'][0]][space['coordinates'][1]]['level'] = space['level']
     
 
     def __init__(self):
-        self.state = [[{'level': 0, 'occupant': ' ', 'occupied': False}
+        self.state = [[{'level': 0, 'occupant': None, 'occupied': False}
                 for i in range(5)] for j in range(5)] # Initial setup as empty board   
         self.__place_initial_pieces()
 
@@ -179,6 +237,17 @@ class Board:
                 print(self.__construct_space_string(i, j), end='')
             print("|")
         print("+--+--+--+--+--+")
+
+class Worker:
+    def __init__(self, color, coordinates, level, label):
+        self.color = color
+        self.coordinates = coordinates
+        self.level = level
+        self.moves = []
+        self.label = label
+    
+    def __repr__(self):
+        return f"{self.label}"
 
 class Player:
     def __init__(self, color, workers):

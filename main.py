@@ -11,13 +11,15 @@ class SantoriniCLI:
 			Main game loop that terminates when the game is over
 		"""
 
-		while(True): # TODO: Check if game is over
+		while not (winner := self.game.check_if_game_over()): # TODO: Check if game is over
 			self.game.print_game_state()
 			worker = self.__prompt_worker_select()
 			move_direction = self.__prompt_move_direction()
 			build_direction = self.__prompt_build_direction()
 			self.game.move_worker(worker, move_direction, build_direction)
-	
+		
+		print(f"{winner} wins!")
+
 	def __prompt_worker_select(self):
 		"""
 			Prompts the user to select a worker
@@ -41,19 +43,19 @@ class SantoriniCLI:
 
 		print("Select a direction to move (n, ne, e, se, s, sw, w, nw)")
 		direction = input()
-		if direction.isalpha() or direction.lower() not in ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']:
+		if not direction.isalpha() or direction.lower() not in ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']:
 			print("Not a valid direction")
 			return self.__prompt_move_direction()
 		return direction
 	
-	def prompt_build_direction(self):
+	def __prompt_build_direction(self):
 		"""
 			Prompts the user to select a build direction
 		"""
 
 		print("Select a direction to build (n, ne, e, se, s, sw, w, nw)")
 		direction = input()
-		if direction.isalpha() or direction.lower() not in ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']:
+		if not direction.isalpha() or direction.lower() not in ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']:
 			print("Not a valid direction")
 			return self.__prompt_move_direction()
 		return direction
