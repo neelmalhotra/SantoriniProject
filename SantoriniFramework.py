@@ -1,4 +1,7 @@
-from ast import Constant, match_case
+from ast import Constant
+from math import sqrt
+
+COORDINATE_LIST = [(i,j) for i in range(5) for j in range(5)]
 
 
 class Game:
@@ -18,8 +21,10 @@ class Game:
         """Checks if x or y exists within the confines of the board
         num: int
         row or column value (should be between 0 and 4 (inclusive)"""
+        return -1 < num < 5
     
     def distance_between_two_points(x0, y0, x1, y1):
+        
         """Calculates distance between two points (x0, y0) and (x1, y1)
 
         Args:
@@ -28,6 +33,7 @@ class Game:
             x1 (int): x-coordinate of second point
             y1 (int): y-coordinate of second point
         """
+        return sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
         
     def place_worker(self, color, x, y):
         """Place worker for that color player (B/W) - places two pieces of a given color on the board
@@ -37,44 +43,91 @@ class Game:
             x (int): X-coordinate
             y (int): y-coordinate
         """
+        if self.board[x][y]['occupant'] != 'O': #Checking condition
+            pass
+        else:
+            self.board[x][y]['occupant'] = color
+            return True
+        return False
         
     def select_worker(self, color, x, y):
-        """Chooses piece to movee
+        """Chooses piece to move
 
         Args:
             color (char): B/W
             x (int): x-coordinate of spot on board
             y (int): y-coordinate of spot on board
         """
+        if self.board[x][y]['occupant'] != color:
+            pass
+        else:
+            self.col = x
+            self.row = y
+            self.make_choice_active(x, y) #Make the x,y coordinates active for the worker
+            self.sub_turn = 'move' #Move to this coordinate
+            return True
+        return False
     
     def convert_direction_to_coordinates(self, direction, x, y):
-        match direction:
-            case 'n': return x, y - 1
-            case 's': return x, y + 1
-            case 'e': return x + 1, y
-            case 'w': return x - 1, y
-            case 'ne': return x + 1, y - 1
-            case 'nw': return x - 1, y - 1
-            case 'se': return x + 1, y + 1
-            case 'sw': return x - 1, y + 1
+        if direction == 'n': return x, y - 1
+        if direction == 's': return x, y + 1
+        if direction == 'e': return x + 1, y
+        if direction == 'w': return x - 1, y
+        if direction == 'ne': return x + 1, y - 1
+        if direction == 'nw': return x - 1, y - 1
+        if direction == 'se': return x + 1, y + 1
+        if direction == 'sw': return x - 1, y + 1
     
-    def move_worker(self, worker, move_direction, build_direction):
+    def move_worker(self, move_direction, x, y):
         """Moves piece to a new spot on board, checks if the deisred new spot is not the same as current spot
 
         Args:
             x (int): x-coordinate of new spot
             y (int): y-coordinate of new spot
         """
-        self.convert_direction_to_coordinates(move_direction, worker.x, worker.y)
+        self.convert_direction_to_coordinates(move_direction, x,y)
         
     def get_height_score(self, color):
         """Generates a numeric score to the game - used in the building of the AI to find the optimal position
         
         color : char (B/W) - which player is playing
         """
-        
+        score = 0
+        for i, j in COORDINATE_LIST:
+            space = self.board[i][j]
+            if space['occupant'] == color:
+                score += 2 * space['level'] + 1
+        return score
+    
+    def get_adjacent(x,y):
+        """Obtain a list of all spaces adjacent to the current one
+
+        Args:
+            x (int): x-coordinate
+            y (int): y-coordinate
+        """
+        adjacent_list = [(x-1, y-1), (x-1, y), (x-1,y+1), 
+                         (x, y-1), (x,y+1),
+                         (x+1, y-1), (x+1, y), (x+1,y+1)]
+        filtered_list = iter(list(filter(
+            lambda x: x[0] >= 0 and x[0] <= 4 and x[1] >= 0 and x[1] <= 4, adjacent_list
+        )))
+        return adjacent_list
+    
+    def get_possible_moving_spaces(self, game, curr_x, curr_y):
+        array = []
+        height = game.board[curr_x][curr_y]['level']
+        for crd in self.get_adjacent(curr_x, curr_y):
+            x_adj, y_adj = crd
+            if (game.board[x_adj][y_adj]['occupant'] == 'O' and (game.board[x_adj][y_adj]['level'] - height) <= 1):
+                array.append((x_adj, y_adj))
+                
+        return array
+                        
     def undo(self):
         """Undo most recent action"""
+        self.sub_turn = 'select'
+        self.make_color_active()        
 
 
     def space_is_within_bounds(self, x, y):
@@ -107,23 +160,58 @@ class Game:
         Returns: bool
         Checks if the user can build on the chosen space, returns True if possible, else Returns False.
         """
+        space_list = self.get_adjacent(x, y)
+        for i, j in space_list:
+            if (self.s_valid_num(i) and self.is_valid_num(j) and
+                    self.board[i][j]['occupant'] == 'O'):
+                return True
+        print("Cannot build {}")
+        return False
         
     def make_player_color_occupied(self):
         """ Mark pieces as occupied. For a given player color, mark all the spaces with that player color as occupied
         """
-        
+        for i, j in COORDINATE_LIST:
+            if self.board[i][j]['occupant'] == self.color and len(self.get_possible_moving_spaces(self, (i, j), False)) > 0:
+                self.board[i][j]['active'] = True
+            else:
+                self.board[i][j]['active'] = False
+                        
     def make_choice_occupied(self):
         """Marks the piece a player has chosen as occupied"""
+        
         
     def check_move_available(self):
         """Check if there is a move available for the player, if not, End Game
         """
+        for i, j in COORDINATE_LIST:
+            if (self.board.state[j][i]['occupant'] == self.color and self.is_move_valid(j, i)): return True
+            
+        self.end_game(True)  
+        False 
+        
         
     def check_build_available(self):
         """Checks if there is a build available for the player, if not, End Game"""
+        for i, j in COORDINATE_LIST:
+            if (self.board.state[j][i]['occupant'] == self.color and self.build_is_valid_space(j, i)): return True
+            
+        self.end_game(True)  
+        return False  
         
-    def end_game(self):
-        """Ends game and prevents further moves - Declare the winner and make all spaces inoccupied and inaccessible"""
+    def end_game(self, switchColor = False):
+        """Ends game and prevents further moves - Declare the winner and make all spaces inoccupied and inaccessible
+        ---------
+        switch_color : bool, optional - switches to the opponent's color before declaring winner in case of secondary win condition
+        """
+        self.end = True
+        if switchColor:
+            if self.color == 'W':
+                self.color = 'G'
+            else:
+                self.color = 'W'
+        self.make_all_spaces_inactive()
+        self.sub_turn = 'end'
     
     def print_game_state(self):
         self.board.print_board()
@@ -131,6 +219,8 @@ class Game:
     
     def check_if_game_over(self):
         """Checks if the game is over, if so, end the game"""
+        # self.check_move_available()
+        # self.check_build_available()
         for row in self.board.state:
             for space in row:
                 if space['level'] == 3 and space['occupied'] == True:
@@ -150,7 +240,11 @@ class Game:
                         'worker': space['occupant']
                     }) 
 
-    
+    def make_all_spaces_inactive(self):
+        for i, j in COORDINATE_LIST:
+            self.board[i][j]['active'] = False #Make all coordinates Inactive
+            
+            
     def enumerate_player_moves(self, player):
         """Enumerates all the possible moves for the player"""
         moves = []
